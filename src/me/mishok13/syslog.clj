@@ -20,29 +20,21 @@
 (def ^:private timestamp-formatter
   (time.format/formatter "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"))
 
+(defn- write!
+  [writer data & [encoding]]
+  (cond
+    (string? data) (write! writer (.getBytes data (or encoding "ASCII")))
+    (instance? (Class/forName "[B") data) (.write writer data 0 (count data))
+    (or (char? data) (integer? data) (instance? java.lang.Byte data)) (.write writer (int data))))
+
 (defrecord Header [priority version timestamp hostname app-name proc-id msg-id]
   ISyslogFormattable
   (show [this writer]
-    (let [pri-value (.getBytes (str "<" priority ">") "ASCII")
-          version (.getBytes (str version) "ASCII")
-          timestamp (.getBytes (time.format/unparse timestamp-formatter timestamp) "ASCII")
-          hostname (.getBytes (str hostname) "ASCII")
-          app-name (.getBytes (str app-name) "ASCII")
-          proc-id (.getBytes (str proc-id) "ASCII")
-          msg-id (.getBytes (str msg-id) "ASCII")]
-      (.write writer pri-value 0 (count pri-value))
-      (.write writer version 0 (count version))
-      (.write writer (int separator))
-      (.write writer timestamp 0 (count timestamp))
-      (.write writer (int separator))
-      (.write writer hostname 0 (count hostname))
-      (.write writer (int separator))
-      (.write writer app-name 0 (count app-name))
-      (.write writer (int separator))
-      (.write writer proc-id 0 (count proc-id))
-      (.write writer (int separator))
-      (.write writer msg-id 0 (count msg-id))
-      writer)))
+    (doseq [data [(str "<" priority ">") (str version) separator
+                  (time.format/unparse timestamp-formatter timestamp) separator
+                  (str hostname) separator (str app-name) separator
+                  (str proc-id) separator (str msg-id)]]
+      (write! writer data))))
 
 (defrecord StructuredData [elements]
   ISyslogFormattable
