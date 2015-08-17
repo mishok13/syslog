@@ -90,7 +90,9 @@
 
 (defn format-message
   "Format message to a byte representation"
-  [message]
+  [message & {:keys [no-bom?]}]
+  ;; FIXME: make sure we can format message without BOM being present
+  ;; in MSG part
   (let [writer (ByteArrayOutputStream.)]
     (show (:header message) writer)
     (.write writer (int separator))
