@@ -1,0 +1,7 @@
+language: clojure
+
+jdk:
+  - openjdk7
+  - oraclejdk8
+
+script: lein midje
