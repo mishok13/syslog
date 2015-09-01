@@ -52,6 +52,8 @@
 ;; https://www.iana.org/assignments/enterprise-numbers/enterprise-numbers
 (defrecord StructuredData [elements]
   ISyslogFormattable
+  (show [this]
+    (.toByteArray (show this (ByteArrayOutputStream.))))
   (show [this writer]
     (cond
 
