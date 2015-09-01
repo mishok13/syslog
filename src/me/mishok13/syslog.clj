@@ -3,7 +3,7 @@
             [clj-time.format :as time.format])
   (:import [java.io ByteArrayOutputStream]
            [org.joda.time.format DateTimeFormat]
-           [java.nio.charset StandardCharsets]))
+           [java.nio.charset StandardCharsets Charset]))
 
 (def ^:private separator \space)
 (def ^:private print-us-ascii (set (map char (range 33 127))))
@@ -20,27 +20,67 @@
     "Format the part of syslog according to RFC 5424"))
 
 (defn- write!
-  [writer data & [encoding]]
-  (cond
-    (string? data) (write! writer (.getBytes data (or encoding "ASCII")))
-    (instance? (Class/forName "[B") data) (.write writer data 0 (count data))
-    (or (char? data) (integer? data) (instance? java.lang.Byte data)) (.write writer (int data))))
+  [^ByteArrayOutputStream writer data & [encoding]]
+  (let [encoding (or encoding StandardCharsets/US_ASCII)]
+    (cond
+      (string? data) (write! writer (.getBytes ^String data ^Charset encoding))
+      (= data ::bom) (.write writer (byte-array 3 (mapv byte [-17 -69 -65])) 0 3)
+      (instance? (Class/forName "[B") data) (.write writer data 0 (count data))
+      (or (char? data) (integer? data) (instance? java.lang.Byte data)) (.write writer (int data)))))
 
 (defrecord Header [priority version timestamp hostname app-name proc-id msg-id timestamp-formatter]
   ISyslogFormattable
   (show [this writer]
-    (doseq [data [(str "<" priority ">") (str version) separator
-                  (time.format/unparse timestamp-formatter timestamp) separator
-                  (str hostname) separator (str app-name) separator
-                  (str proc-id) separator (str msg-id)]]
+    (doseq [data ["<"
+                  (str priority)
+                  ">"
+                  (str version)
+                  separator
+                  (time.format/unparse timestamp-formatter timestamp)
+                  separator
+                  (str hostname)
+                  separator
+                  (str app-name)
+                  separator
+                  (str proc-id)
+                  separator
+                  (str msg-id)]]
       (write! writer data))))
 
+;; FIXME: When creating structured data we need to ensure that SD-ID
+;; has proper IANA number, as defined here:
+;; https://www.iana.org/assignments/enterprise-numbers/enterprise-numbers
 (defrecord StructuredData [elements]
   ISyslogFormattable
+  (show [this]
+    (.toByteArray ^ByteArrayOutputStream (show this (ByteArrayOutputStream.))))
   (show [this writer]
     (cond
-      (seq elements) writer
-      :else (.write writer (int \-)))))
+
+      (seq elements)
+      (do
+        (doseq [element elements]
+          (write! writer \[)
+          (write! writer (:id element) StandardCharsets/US_ASCII)
+          (doseq [[name value] (:params element)]
+            (write! writer \space)
+            (write! writer name StandardCharsets/US_ASCII)
+            (write! writer \=)
+            (write! writer \")
+            (write! writer value StandardCharsets/UTF_8)
+            (write! writer \"))
+          (write! writer \]))
+        writer)
+
+      :else
+      (do
+        (write! writer \-)
+        writer))))
+
+(defn make-structured-data
+  [elements]
+  ;; FIXME: add verification
+  (StructuredData. elements))
 
 (defrecord Message [bom? message]
   ISyslogFormattable
@@ -48,34 +88,22 @@
     (if message
       (do
         (when bom?
-          (.write writer (- 239 128))
-          (.write writer (- 187 128))
-          (.write writer (- 191 129)))
-        (cond
-          ;; Better to always have encoded bytes here, perhaps?
-          (string? message)
-          (let [bytes (.getBytes message StandardCharsets/UTF_8)]
-            (.write writer bytes 0 (count bytes)))
-
-          (instance? (Class/forName "[B") message)
-          (.write writer message 0 (count message))))
-      (.write writer (byte \-)))))
+          (write! writer ::bom))
+        (write! writer message StandardCharsets/UTF_8))
+      (write! writer \-))))
 
 (extend-protocol ISyslogFormattable
   java.lang.String
   (show [this writer]
-    (.write writer (- 239 128))
-    (.write writer (- 187 128))
-    (.write writer (- 191 129))
-    (let [bytes (.getBytes this StandardCharsets/UTF_8)]
-      (.write writer bytes 0 (count bytes)))))
+    (write! writer ::bom)
+    (write! writer this StandardCharsets/UTF_8)))
 
 (defrecord SyslogMessage [header structured-data message])
 
 (defn- valid-ascii?
   [s min-length max-length]
   (and (string? s)
-       (let [bytes (.getBytes s StandardCharsets/US_ASCII)]
+       (let [bytes (.getBytes ^String s StandardCharsets/US_ASCII)]
          (and
           (printable-ascii? bytes)
           (<= min-length (count bytes) max-length)))))
@@ -118,9 +146,9 @@
   ;; in MSG part
   (let [writer (ByteArrayOutputStream.)]
     (show (:header message) writer)
-    (.write writer (int separator))
+    (write! writer separator)
     (show (:structured-data message) writer)
     (when (:message (:message message))
-      (.write writer (int separator))
+      (write! writer separator)
       (show (:message message) writer))
     (.toByteArray writer)))
