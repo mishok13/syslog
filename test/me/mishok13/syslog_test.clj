@@ -36,7 +36,7 @@
   118 105 99 107 32 111 110 32 47 100 101 118 47 112 116 115 47 56]
  ;; Note that this uses a modified version of the test, since this
  ;; library does not support microsecond precision. The original
- ;; message is:
+ ;; example message in RFC is:
  ;; "<165>1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts."
  ;; Message as used for testing is:
  ;; "<165>1 2003-08-24T05:14:15.003-07:00 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts."
