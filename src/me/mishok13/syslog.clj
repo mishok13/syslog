@@ -24,7 +24,7 @@
   (let [encoding (or encoding StandardCharsets/US_ASCII)]
     (cond
       (string? data) (write! writer (.getBytes data encoding))
-      (= data ::bom) (.write writer (byte-array 3 [-17 -69 -65]) 0 3)
+      (= data ::bom) (.write writer (byte-array 3 (mapv byte [-17 -69 -65])) 0 3)
       (instance? (Class/forName "[B") data) (.write writer data 0 (count data))
       (or (char? data) (integer? data) (instance? java.lang.Byte data)) (.write writer (int data)))))
 
