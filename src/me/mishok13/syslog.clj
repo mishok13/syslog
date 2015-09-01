@@ -3,7 +3,7 @@
             [clj-time.format :as time.format])
   (:import [java.io ByteArrayOutputStream]
            [org.joda.time.format DateTimeFormat]
-           [java.nio.charset StandardCharsets]))
+           [java.nio.charset StandardCharsets Charset]))
 
 (def ^:private separator \space)
 (def ^:private print-us-ascii (set (map char (range 33 127))))
@@ -20,10 +20,10 @@
     "Format the part of syslog according to RFC 5424"))
 
 (defn- write!
-  [writer data & [encoding]]
+  [^ByteArrayOutputStream writer data & [encoding]]
   (let [encoding (or encoding StandardCharsets/US_ASCII)]
     (cond
-      (string? data) (write! writer (.getBytes data encoding))
+      (string? data) (write! writer (.getBytes ^String data ^Charset encoding))
       (= data ::bom) (.write writer (byte-array 3 (mapv byte [-17 -69 -65])) 0 3)
       (instance? (Class/forName "[B") data) (.write writer data 0 (count data))
       (or (char? data) (integer? data) (instance? java.lang.Byte data)) (.write writer (int data)))))
@@ -53,7 +53,7 @@
 (defrecord StructuredData [elements]
   ISyslogFormattable
   (show [this]
-    (.toByteArray (show this (ByteArrayOutputStream.))))
+    (.toByteArray ^ByteArrayOutputStream (show this (ByteArrayOutputStream.))))
   (show [this writer]
     (cond
 
@@ -103,7 +103,7 @@
 (defn- valid-ascii?
   [s min-length max-length]
   (and (string? s)
-       (let [bytes (.getBytes s StandardCharsets/US_ASCII)]
+       (let [bytes (.getBytes ^String s StandardCharsets/US_ASCII)]
          (and
           (printable-ascii? bytes)
           (<= min-length (count bytes) max-length)))))
