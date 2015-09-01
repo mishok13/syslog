@@ -47,6 +47,9 @@
                   (str msg-id)]]
       (write! writer data))))
 
+;; FIXME: When creating structured data we need to ensure that SD-ID
+;; has proper IANA number, as defined here:
+;; https://www.iana.org/assignments/enterprise-numbers/enterprise-numbers
 (defrecord StructuredData [elements]
   ISyslogFormattable
   (show [this writer]
