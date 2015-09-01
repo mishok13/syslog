@@ -4,7 +4,7 @@
   :license {:name "MIT"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.7.0"]]
-  :profiles {:dev {:dependencies [[midje "1.6.3"]]
+  :profiles {:dev {:dependencies [[midje "1.7.0"]]
                    :plugins [[lein-midje "3.1.3"]]
                    :global-vars {*warn-on-reflection* true}}
              :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}
