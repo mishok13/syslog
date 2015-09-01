@@ -4,4 +4,4 @@ jdk:
   - openjdk7
   - oraclejdk8
 
-script: lein midje
+script: lein with-profile dev:dev,1.5:dev,1.6:dev,1.8 midje
