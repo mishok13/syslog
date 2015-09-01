@@ -31,10 +31,20 @@
 (defrecord Header [priority version timestamp hostname app-name proc-id msg-id timestamp-formatter]
   ISyslogFormattable
   (show [this writer]
-    (doseq [data [(str "<" priority ">") (str version) separator
-                  (time.format/unparse timestamp-formatter timestamp) separator
-                  (str hostname) separator (str app-name) separator
-                  (str proc-id) separator (str msg-id)]]
+    (doseq [data ["<"
+                  (str priority)
+                  ">"
+                  (str version)
+                  separator
+                  (time.format/unparse timestamp-formatter timestamp)
+                  separator
+                  (str hostname)
+                  separator
+                  (str app-name)
+                  separator
+                  (str proc-id)
+                  separator
+                  (str msg-id)]]
       (write! writer data))))
 
 (defrecord StructuredData [elements]
